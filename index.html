@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
     <meta charset="utf-8">
-    <title>ระบบค้นหาข้อมูลด้วย ID | ศูนย์การศึกษาพิเศษ จ.อุดรธานี</title>
+    <title>ระบบค้นหาข้อมูลวันลา | ศูนย์การศึกษาพิเศษ จ.อุดรธานี</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -147,7 +147,7 @@
                 <h3 class="text-lg font-semibold">รายละเอียดข้อมูล</h3>
                 <button id="closeModal" class="p-2 rounded-lg hover:bg-white/10 transition-colors">✖️</button>
             </div>
-            <div id="detailContent" class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            <div id="detailContent" class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[80vh] overflow-y-auto"></div>
             <div class="p-5 border-t border-white/10 flex items-center justify-end">
                 <button id="closeModal2" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 transition-colors">ปิด</button>
             </div>
@@ -190,7 +190,8 @@
         }
 
         function renderRow(obj) {
-            const safe = (k, def = '-') => (obj[k] !== undefined && obj[k] !== null && obj[k] !== '') ? obj[k] : def;
+            const safe = (k, def = '-') => (obj[k] !== undefined && obj[k] !== null && obj[k] !== '') ?
+                obj[k] : def;
 
             const id = safe('ID');
             const name = safe('ชื่อ-สกุล');
@@ -213,11 +214,11 @@
                 return td;
             }
 
-            const imgHTML = imageUrl ? `
+            const imgHTML = imageUrl ?
+                `
                 <img src="${imageUrl}" alt="รูปภาพ" class="w-12 h-12 rounded-lg object-cover border border-white/10"
                              onerror="this.src=''; this.alt='Image failed to load'; this.style.display='none';">
             ` : `<div class="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center text-xs text-slate-300">ไม่มีรูป</div>`;
-
             tr.appendChild(tdInner(`<span class="font-semibold">${id}</span>`));
             tr.appendChild(tdInner(imgHTML));
             tr.appendChild(tdInner(`<div class="truncate max-w-[120px]" title="${name}">${name}</div>`));
@@ -242,11 +243,11 @@
 
         function openDetailModal(obj) {
             detailContent.innerHTML = "";
-
             const imageUrl = obj.imageUrl || obj['url'] || '';
             const imgBox = document.createElement("div");
             imgBox.className = "md:col-span-1";
-            imgBox.innerHTML = imageUrl ? `
+            imgBox.innerHTML = imageUrl ?
+                `
                 <img src="${imageUrl}" alt="รูปภาพ" class="w-full h-56 object-cover rounded-xl border border-white/10"
                              onerror="this.src=''; this.alt='Image failed to load'; this.style.display='none';">
             ` : `<div class="w-full h-56 rounded-xl bg-white/5 flex items-center justify-center text-slate-300">ไม่มีรูป</div>`;
@@ -290,7 +291,6 @@
                 row.appendChild(v);
                 listBox.appendChild(row);
             });
-
             detailContent.appendChild(listBox);
             detailModal.classList.add("show");
         }
@@ -308,7 +308,6 @@
 
             const params = new URLSearchParams({sheetId: SHEET_ID, id: id});
             const url = `${APP_SCRIPT_URL}?${params.toString()}`;
-
             try {
                 const res = await fetch(url, {mode: "cors", cache: "no-store"});
                 const data = await res.json();
