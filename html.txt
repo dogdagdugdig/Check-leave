@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="utf-8">
+    <title>ระบบค้นหาข้อมูลด้วย ID | ศูนย์การศึกษาพิเศษ จ.อุดรธานี</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0f1d;
+            --panel: #0e152b;
+            --ring: rgba(16, 185, 129, .35);
+        }
+
+        html, body {
+            font-family: "Sarabun", system-ui, -apple-system, Segoe UI, Roboto, Arial;
+        }
+
+        .focus-ring:focus {
+            outline: none;
+            box-shadow: 0 0 0 4px var(--ring);
+        }
+
+        .glow {
+            position: relative;
+            border-radius: 16px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .02));
+            border: 1px solid rgba(255, 255, 255, .08);
+        }
+
+        .glow::before {
+            content: "";
+            position: absolute;
+            inset: -1px;
+            border-radius: 16px;
+            background: linear-gradient(130deg, rgba(16, 185, 129, .35), rgba(59, 130, 246, .25), rgba(255, 255, 255, .1));
+            filter: blur(12px);
+            opacity: .25;
+            z-index: -1;
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .badge {
+            background: rgba(255, 255, 255, .08);
+            border: 1px solid rgba(255, 255, 255, .08);
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, .08);
+        }
+
+        .thead-sticky th {
+            position: sticky;
+            top: 0;
+            background: #0f172a;
+            color: #e5e7eb;
+            z-index: 10;
+        }
+        
+        @media (max-width: 768px) {
+            .table-wrap table {
+                min-width: 800px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-[var(--bg)] text-white min-h-screen">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <header class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold">ระบบค้นหาข้อมูลวันลา</h1>
+                <p class="text-slate-300 text-sm md:text-base">ศูนย์การศึกษาพิเศษ ประจำจังหวัดอุดรธานี</p>
+            </div>
+            <div class="badge px-3 py-1.5 rounded-lg text-sm text-slate-300 flex-shrink-0">
+                เชื่อมต่อ Apps Script พร้อมใช้งาน
+            </div>
+        </header>
+
+        <section class="glow p-5 md:p-6">
+            <div class="flex flex-col md:flex-row md:items-end gap-4">
+                <div class="flex-1">
+                    <label for="idInput" class="block text-sm text-slate-300 mb-1">รหัส ID (ค้นหาด้วย ID เท่านั้น)</label>
+                    <input id="idInput" type="text" inputmode="numeric" placeholder="เช่น: 1001"
+                           class="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-2.5 focus-ring placeholder:text-slate-400 text-base">
+                    <p class="text-xs text-slate-400 mt-1">ถ้าไม่พบ ID จะแจ้ง “ไม่มีข้อมูลที่คุณค้นหา”</p>
+                </div>
+                <div class="flex gap-3 flex-shrink-0">
+                    <button id="searchBtn" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 focus-ring text-base">ค้นหา</button>
+                    <button id="resetBtn" class="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 focus-ring text-base">รีเซ็ต</button>
+                </div>
+            </div>
+            <div id="status" class="mt-3 text-sm text-slate-300">พร้อมค้นหา</div>
+        </section>
+
+        <section class="mt-6">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-semibold">ผลการค้นหา</h2>
+                <span id="countBadge" class="badge rounded-lg px-3 py-1.5 text-sm text-slate-300">0 รายการ</span>
+            </div>
+            <div class="table-wrap">
+                <table class="min-w-full text-left">
+                    <thead class="thead-sticky">
+                        <tr>
+                            <th class="px-4 py-3 text-sm font-semibold">ID</th>
+                            <th class="px-4 py-3 text-sm font-semibold">รูปภาพ</th>
+                            <th class="px-4 py-3 text-sm font-semibold">ชื่อ-สกุล</th>
+                            <th class="px-4 py-3 text-sm font-semibold">ตำแหน่ง</th>
+                            <th class="px-4 py-3 text-sm font-semibold">ลากิจ</th>
+                            <th class="px-4 py-3 text-sm font-semibold">ลาป่วย</th>
+                            <th class="px-4 py-3 text-sm font-semibold">ลาคลอด</th>
+                            <th class="px-4 py-3 text-sm font-semibold">พักผ่อน/บวช</th>
+                            <th class="px-4 py-3 text-sm font-semibold">เข้าสาย</th>
+                            <th class="px-4 py-3 text-sm font-semibold">รวมวันลา</th>
+                            <th class="px-4 py-3 text-sm font-semibold">การทำงาน</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultBody" class="divide-y divide-white/10 bg-[var(--panel)]"></tbody>
+                </table>
+            </div>
+            <p id="emptyText" class="text-center text-slate-300 py-8 hidden">ไม่มีข้อมูลที่คุณค้นหา</p>
+        </section>
+
+        <footer class="mt-8 text-center text-slate-300 text-sm">
+            @2028 ระบบค้นหาข้อมูลวันลา | พัฒนาโดย นายธีระศักดิ์ สร้อยสิงห์
+        </footer>
+    </div>
+
+    <div id="detailModal" class="modal bg-black/50 backdrop-blur-sm p-4">
+        <div class="w-full max-w-2xl rounded-2xl overflow-hidden"
+             style="background:var(--panel); border:1px solid rgba(255,255,255,.08)">
+            <div class="p-5 border-b border-white/10 flex items-center justify-between">
+                <h3 class="text-lg font-semibold">รายละเอียดข้อมูล</h3>
+                <button id="closeModal" class="p-2 rounded-lg hover:bg-white/10 transition-colors">✖️</button>
+            </div>
+            <div id="detailContent" class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            <div class="p-5 border-t border-white/10 flex items-center justify-end">
+                <button id="closeModal2" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 transition-colors">ปิด</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ================== Config ==================
+        const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycxjvUVuhEExAvaUPklEUCtt0dez60sFgi9rYzl3vEkd0KRMorschJGYZZqi0JBPQG_A/exec";
+        const SHEET_ID = "1TK7U_TbNzF2AY4tIY71GnunPyygx69X6dLamA0VjnN8";
+
+        // ================== Elements ==================
+        const idInput = document.getElementById("idInput");
+        const searchBtn = document.getElementById("searchBtn");
+        const resetBtn = document.getElementById("resetBtn");
+        const statusEl = document.getElementById("status");
+        const countBadge = document.getElementById("countBadge");
+        const resultBody = document.getElementById("resultBody");
+        const emptyText = document.getElementById("emptyText");
+
+        const detailModal = document.getElementById("detailModal");
+        const closeModal = document.getElementById("closeModal");
+        const closeModal2 = document.getElementById("closeModal2");
+        const detailContent = document.getElementById("detailContent");
+
+        // ================== State ==================
+        let lastResult = null;
+
+        // ================== UI Helpers ==================
+        function setStatus(msg) {
+            statusEl.textContent = msg;
+        }
+
+        function setCount(n) {
+            countBadge.textContent = `${n} รายการ`;
+        }
+
+        function clearTable() {
+            resultBody.innerHTML = "";
+        }
+
+        function renderRow(obj) {
+            const safe = (k, def = '-') => (obj[k] !== undefined && obj[k] !== null && obj[k] !== '') ? obj[k] : def;
+
+            const id = safe('ID');
+            const name = safe('ชื่อ-สกุล');
+            const position = safe('ตำแหน่ง');
+            const personal = safe('ลากิจ', 0);
+            const sick = safe('ลาป่วย', 0);
+            const maternity = safe('ลาคลอด', 0);
+            const vacation = safe('พักผ่อน/บวช', 0);
+            const late = safe('เข้าสาย', 0);
+            const total = safe('รวมวันลา', 0);
+            const imageUrl = obj.imageUrl || safe('url', '');
+
+            const tr = document.createElement("tr");
+            tr.className = "hover:bg-white/5";
+
+            function tdInner(html) {
+                const td = document.createElement("td");
+                td.className = "px-4 py-3 align-middle whitespace-nowrap text-sm md:text-base";
+                td.innerHTML = html;
+                return td;
+            }
+
+            const imgHTML = imageUrl ? `
+                <img src="${imageUrl}" alt="รูปภาพ" class="w-12 h-12 rounded-lg object-cover border border-white/10"
+                             onerror="this.src=''; this.alt='Image failed to load'; this.style.display='none';">
+            ` : `<div class="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center text-xs text-slate-300">ไม่มีรูป</div>`;
+
+            tr.appendChild(tdInner(`<span class="font-semibold">${id}</span>`));
+            tr.appendChild(tdInner(imgHTML));
+            tr.appendChild(tdInner(`<div class="truncate max-w-[120px]" title="${name}">${name}</div>`));
+            tr.appendChild(tdInner(`<span>${position}</span>`));
+            tr.appendChild(tdInner(`<span>${personal}</span>`));
+            tr.appendChild(tdInner(`<span>${sick}</span>`));
+            tr.appendChild(tdInner(`<span>${maternity}</span>`));
+            tr.appendChild(tdInner(`<span>${vacation}</span>`));
+            tr.appendChild(tdInner(`<span>${late}</span>`));
+            tr.appendChild(tdInner(`<span class="font-semibold">${total}</span>`));
+            const btnTd = document.createElement("td");
+            btnTd.className = "px-4 py-3 whitespace-nowrap";
+            const btn = document.createElement("button");
+            btn.className = "px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm";
+            btn.textContent = "ดูรายละเอียด";
+            btn.addEventListener("click", () => openDetailModal(obj));
+            btnTd.appendChild(btn);
+            tr.appendChild(btnTd);
+
+            resultBody.appendChild(tr);
+        }
+
+        function openDetailModal(obj) {
+            detailContent.innerHTML = "";
+
+            const imageUrl = obj.imageUrl || obj['url'] || '';
+            const imgBox = document.createElement("div");
+            imgBox.className = "md:col-span-1";
+            imgBox.innerHTML = imageUrl ? `
+                <img src="${imageUrl}" alt="รูปภาพ" class="w-full h-56 object-cover rounded-xl border border-white/10"
+                             onerror="this.src=''; this.alt='Image failed to load'; this.style.display='none';">
+            ` : `<div class="w-full h-56 rounded-xl bg-white/5 flex items-center justify-center text-slate-300">ไม่มีรูป</div>`;
+            detailContent.appendChild(imgBox);
+
+            const listBox = document.createElement("div");
+            listBox.className = "md:col-span-1 grid grid-cols-1 gap-2";
+            const keysOrder = [
+                'ID', 'ชื่อ-สกุล', 'ตำแหน่ง', 'ลากิจ', 'ลาป่วย', 'ลาคลอด', 'พักผ่อน/บวช', 'เข้าสาย', 'รวมวันลา', 'url'
+            ];
+            const seen = new Set();
+
+            keysOrder.forEach(k => {
+                if (obj[k] !== undefined) {
+                    seen.add(k);
+                    const row = document.createElement("div");
+                    row.className = "flex items-center justify-between bg-white/5 rounded-lg px-3 py-2 text-sm md:text-base";
+                    const l = document.createElement("span");
+                    l.className = "text-slate-300";
+                    l.textContent = k;
+                    const v = document.createElement("span");
+                    v.className = "font-semibold text-right break-words max-w-[60%]";
+                    v.textContent = (obj[k] || '-');
+                    row.appendChild(l);
+                    row.appendChild(v);
+                    listBox.appendChild(row);
+                }
+            });
+
+            Object.keys(obj).forEach(k => {
+                if (seen.has(k) || k === 'imageUrl') return;
+                const row = document.createElement("div");
+                row.className = "flex items-center justify-between bg-white/5 rounded-lg px-3 py-2 text-sm md:text-base";
+                const l = document.createElement("span");
+                l.className = "text-slate-300";
+                l.textContent = k;
+                const v = document.createElement("span");
+                v.className = "font-semibold text-right break-words max-w-[60%]";
+                v.textContent = (obj[k] || '-');
+                row.appendChild(l);
+                row.appendChild(v);
+                listBox.appendChild(row);
+            });
+
+            detailContent.appendChild(listBox);
+            detailModal.classList.add("show");
+        }
+
+        function closeDetailModal() {
+            detailModal.classList.remove("show");
+        }
+
+        // ================== Fetch Logic ==================
+        async function searchById(id) {
+            setStatus("กำลังค้นหา... โปรดรอสักครู่");
+            clearTable();
+            emptyText.classList.add("hidden");
+            setCount(0);
+
+            const params = new URLSearchParams({sheetId: SHEET_ID, id: id});
+            const url = `${APP_SCRIPT_URL}?${params.toString()}`;
+
+            try {
+                const res = await fetch(url, {mode: "cors", cache: "no-store"});
+                const data = await res.json();
+
+                if (!data.ok) {
+                    setStatus(data.error ? `ผิดพลาด: ${data.error}` : "เชื่อมต่อไม่สำเร็จ");
+                    emptyText.classList.remove("hidden");
+                    return;
+                }
+                if (!data.found) {
+                    setStatus("ไม่มีข้อมูลที่คุณค้นหา");
+                    emptyText.classList.remove("hidden");
+                    return;
+                }
+
+                lastResult = data.data;
+                renderRow(lastResult);
+                setCount(1);
+                setStatus("ค้นหาสำเร็จ");
+            } catch (err) {
+                console.warn(err);
+                setStatus("เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่");
+                emptyText.classList.remove("hidden");
+            }
+        }
+
+        // ================== Events ==================
+        document.getElementById("searchBtn").addEventListener("click", () => {
+            const id = idInput.value.trim();
+            if (!id) {
+                setStatus("กรุณากรอก ID ก่อนค้นหา");
+                return;
+            }
+            searchById(id);
+        });
+        idInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                const id = idInput.value.trim();
+                if (!id) {
+                    setStatus("กรุณากรอก ID ก่อนค้นหา");
+                    return;
+                }
+                searchById(id);
+            }
+        });
+        document.getElementById("resetBtn").addEventListener("click", () => {
+            idInput.value = "";
+            lastResult = null;
+            clearTable();
+            setCount(0);
+            setStatus("พร้อมค้นหา");
+            emptyText.classList.add("hidden");
+            idInput.focus();
+        });
+
+        // Modal close
+        document.getElementById("closeModal").addEventListener("click", closeDetailModal);
+        document.getElementById("closeModal2").addEventListener("click", closeDetailModal);
+        detailModal.addEventListener("click", (e) => {
+            if (e.target === detailModal) closeDetailModal();
+        });
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") closeDetailModal();
+        });
+
+        // Init
+        setStatus("พร้อมค้นหา");
+    </script>
+</body>
+</html>
